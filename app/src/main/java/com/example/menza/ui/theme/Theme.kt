@@ -22,6 +22,8 @@ private val DarkColorScheme = darkColorScheme(
     onError = TextWhite
 )
 
+
+// Light mode shema
 private val LightColorScheme = lightColorScheme(
     primary = LightGreen,
     secondary = MediumGreen,

@@ -19,11 +19,8 @@ class AuthViewModel(
 
     private val _uiState = mutableStateOf(AuthUiState())
     val uiState: State<AuthUiState> = _uiState
-
     private val _searchedUser = MutableStateFlow<User?>(null)
-
     private val _searchUserLoading = MutableStateFlow(false)
-
     private val _searchUserError = MutableStateFlow<String?>(null)
 
     fun onEmailChange(newEmail: String) {
@@ -66,10 +63,32 @@ class AuthViewModel(
                 )
 
                 if (result.isSuccess) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isRegistered = true
-                    )
+                    val uid = repository.getCurrentUserId() ?: return@launch
+                    val userResult = repository.getUserById(uid)
+                    if (userResult.isSuccess) {
+                        val user = userResult.getOrNull()
+                        if (user != null) {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                isRegistered = true,
+                                isLoggedIn = true,
+                                email = user.email,
+                                username = user.username,
+                                role = user.role.name
+                            )
+                            loadFavorites()
+                        } else {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                errorMessage = "Failed to fetch user data"
+                            )
+                        }
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = userResult.exceptionOrNull()?.message ?: "Failed to fetch user data"
+                        )
+                    }
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -98,8 +117,11 @@ class AuthViewModel(
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             isLoggedIn = true,
+                            email = user.email,
+                            username = user.username,
                             role = user.role.name
                         )
+                        loadFavorites()
                     } else {
                         FirebaseAuth.getInstance().signOut()
                         _uiState.value = _uiState.value.copy(
@@ -149,36 +171,50 @@ class AuthViewModel(
     private val _favoritesLoading = MutableStateFlow(false)
     val favoritesLoading: StateFlow<Boolean> = _favoritesLoading
 
-    private fun loadFavorites() {
-        val uid = repository.getCurrentUserId() ?: return
+    fun loadFavorites() {
+        val uid = repository.getCurrentUserId() ?: run {
+            _uiState.value = _uiState.value.copy(errorMessage = "User not logged in")
+            return
+        }
         viewModelScope.launch {
             _favoritesLoading.value = true
-            val userResult = repository.getUserById(uid)
-            if (userResult.isSuccess) {
-                val user = userResult.getOrNull() ?: return@launch
-                val favItems = mutableListOf<FavoriteItem>()
-                for (foodId in user.favorites) {
-                    val foodResult = restaurantRepository.getFoodById(foodId)
-                    if (foodResult.isSuccess) {
-                        val food = foodResult.getOrNull() ?: continue
-                        val restaurantResult = restaurantRepository.getRestaurantById(food.restaurantId)
-                        if (restaurantResult.isSuccess) {
-                            val restaurant = restaurantResult.getOrNull() ?: continue
-                            favItems.add(
-                                FavoriteItem(
-                                    foodId = foodId,
-                                    foodName = food.displayName(),
-                                    restaurantName = restaurant.name,
-                                    city = restaurant.city,
-                                    photoUrl = food.photoUrl
+            try {
+                val userResult = repository.getUserById(uid)
+                if (userResult.isSuccess) {
+                    val user = userResult.getOrNull() ?: run {
+                        _uiState.value = _uiState.value.copy(errorMessage = "User not found")
+                        _favoritesLoading.value = false
+                        return@launch
+                    }
+                    val favItems = mutableListOf<FavoriteItem>()
+                    for (foodId in user.favorites) {
+                        val foodResult = restaurantRepository.getFoodById(foodId)
+                        if (foodResult.isSuccess) {
+                            val food = foodResult.getOrNull() ?: continue
+                            val restaurantResult = restaurantRepository.getRestaurantById(food.restaurantId)
+                            if (restaurantResult.isSuccess) {
+                                val restaurant = restaurantResult.getOrNull() ?: continue
+                                favItems.add(
+                                    FavoriteItem(
+                                        foodId = foodId,
+                                        foodName = food.displayName(),
+                                        restaurantName = restaurant.name,
+                                        city = restaurant.city,
+                                        photoUrl = food.photoUrl
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
+                    _favorites.value = favItems
+                } else {
+                    _uiState.value = _uiState.value.copy(errorMessage = userResult.exceptionOrNull()?.message ?: "Failed to load favorites")
                 }
-                _favorites.value = favItems
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(errorMessage = e.message ?: "Error loading favorites")
+            } finally {
+                _favoritesLoading.value = false
             }
-            _favoritesLoading.value = false
         }
     }
 
@@ -196,6 +232,7 @@ class AuthViewModel(
             }
         }
     }
+
     fun logout() {
         repository.logout()
         _uiState.value = _uiState.value.copy(isLoggedIn = false)

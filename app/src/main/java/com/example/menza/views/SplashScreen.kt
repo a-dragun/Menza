@@ -11,30 +11,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import com.example.menza.viewmodels.AuthViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SplashScreen(
     viewModel: AuthViewModel,
     navController: NavController
 ) {
-    val state = viewModel.uiState.value
-
-    LaunchedEffect(Unit) {
-        viewModel.checkIfLoggedIn()
-    }
-
-    LaunchedEffect(state.isLoggedIn) {
-        if (state.isLoggedIn) {
-            navController.navigate("restaurantList") {
-                popUpTo("splash") { inclusive = true }
-            }
-        } else {
-            navController.navigate("login") {
-                popUpTo("splash") { inclusive = true }
-            }
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -42,5 +27,22 @@ fun SplashScreen(
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+    }
+
+    LaunchedEffect(Unit) {
+        val isLoggedIn = withContext(Dispatchers.IO) {
+            viewModel.checkIfLoggedIn()
+            viewModel.uiState.value.isLoggedIn
+        }
+        delay(1000)
+        if (isLoggedIn) {
+            navController.navigate("restaurantList") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+            }
+        } else {
+            navController.navigate("login") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+            }
+        }
     }
 }

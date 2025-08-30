@@ -6,7 +6,16 @@ import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,8 +29,31 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,6 +92,11 @@ fun FoodSearchScreen(
     val allTags = foods.flatMap { it.tags.map { tag -> tag.getDisplayName(context) } }.distinct()
 
     LaunchedEffect(restaurantId) { viewModel.loadRestaurantById(restaurantId) }
+    LaunchedEffect(restaurantId) {
+        searchText = ""
+        selectedTagIndexes = setOf()
+        selectedStatusFilters = setOf()
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -67,14 +104,17 @@ fun FoodSearchScreen(
             TopAppBar(
                 title = { Text(restaurant?.name ?: stringResource(R.string.restaurant_not_found)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        viewModel.clearRestaurantData()
+                        onBack()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
         },
         floatingActionButton = {
-            if (restaurant?.staffIds?.contains(userId) == true) {
+            if (restaurant?.staffIds?.contains(userId) == true && restaurant?.id == restaurantId) {
                 FloatingActionButton(
                     onClick = { onAddFoodClick(restaurantId) },
                     containerColor = MaterialTheme.colorScheme.primary
@@ -84,98 +124,113 @@ fun FoodSearchScreen(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            RoundedSearchBar(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                hint = stringResource(R.string.search_food_hint),
-                onTextChanged = { searchText = it }
-            )
-            ChipsRowUI(
-                chipItems = allTags,
-                selectedChipIndexes = selectedTagIndexes,
-                onChipSelected = { index ->
-                    selectedTagIndexes = if (selectedTagIndexes.contains(index)) {
-                        selectedTagIndexes - index
-                    } else {
-                        selectedTagIndexes + index
-                    }
-                }
-            )
-            LazyRow(
+        if (isLoading || restaurant?.id != restaurantId) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
             ) {
-                items(FoodStatus.entries.filter { it != FoodStatus.UNAVAILABLE }) { status ->
-                    FilterChip(
-                        selected = selectedStatusFilters.contains(status),
-                        onClick = {
-                            selectedStatusFilters = if (selectedStatusFilters.contains(status)) {
-                                selectedStatusFilters - status
-                            } else {
-                                selectedStatusFilters + status
-                            }
-                        },
-                        label = { Text(status.getDisplayName(context)) },
-                        leadingIcon = if (selectedStatusFilters.contains(status)) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(FilterChipDefaults.IconSize)
-                                )
-                            }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = Color.Black
-                        )
-                    )
-                }
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 4.dp
+                )
             }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                RoundedSearchBar(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    hint = stringResource(R.string.search_food_hint),
+                    onTextChanged = { searchText = it }
+                )
 
-            Spacer(Modifier.height(8.dp))
-
-            when {
-                isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                ChipsRowUI(
+                    chipItems = allTags,
+                    selectedChipIndexes = selectedTagIndexes,
+                    onChipSelected = { index ->
+                        selectedTagIndexes = if (selectedTagIndexes.contains(index)) {
+                            selectedTagIndexes - index
+                        } else {
+                            selectedTagIndexes + index
+                        }
+                    }
+                )
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(FoodStatus.entries.filter { it != FoodStatus.UNAVAILABLE }) { status ->
+                        FilterChip(
+                            selected = selectedStatusFilters.contains(status),
+                            onClick = {
+                                selectedStatusFilters = if (selectedStatusFilters.contains(status)) {
+                                    selectedStatusFilters - status
+                                } else {
+                                    selectedStatusFilters + status
+                                }
+                            },
+                            label = { Text(status.getDisplayName(context)) },
+                            leadingIcon = if (selectedStatusFilters.contains(status)) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                    )
+                                }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = Color.Black
+                            )
+                        )
+                    }
                 }
-                error != null -> Text(error!!, color = MaterialTheme.colorScheme.error)
-                restaurant == null -> Text(stringResource(R.string.restaurant_not_found))
-                else -> {
-                    val selectedTags = selectedTagIndexes.map { allTags[it] }
-                    var filteredFoods = foods.filter { food ->
-                        (searchText.isEmpty() || food.displayName().contains(searchText, ignoreCase = true)) &&
-                                (selectedTags.isEmpty() || food.tags.any { it.displayName() in selectedTags }) &&
-                                (selectedStatusFilters.isEmpty() || food.status in selectedStatusFilters)
-                    }
-                    filteredFoods = filteredFoods.sortedBy {
-                        when (it.status) {
-                            FoodStatus.SERVING -> 1
-                            FoodStatus.PREPARING -> 2
-                            FoodStatus.UNAVAILABLE -> 3
-                        }
-                    }
 
-                    if (filteredFoods.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(stringResource(R.string.no_foods_available))
+                Spacer(Modifier.height(8.dp))
+
+                @Suppress("KotlinConstantConditions")
+                when {
+                    error != null -> Text(error!!, color = MaterialTheme.colorScheme.error)
+                    restaurant == null -> Text(stringResource(R.string.restaurant_not_found))
+                    else -> {
+                        val selectedTags = selectedTagIndexes.map { allTags[it] }
+                        var filteredFoods = foods.filter { food ->
+                            (searchText.isEmpty() || food.displayName().contains(searchText, ignoreCase = true)) &&
+                                    (selectedTags.isEmpty() || food.tags.any { it.displayName() in selectedTags }) &&
+                                    (selectedStatusFilters.isEmpty() || food.status in selectedStatusFilters)
                         }
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 140.dp),
-                            contentPadding = PaddingValues(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(filteredFoods) { food ->
-                                FoodItemCard(food = food) { onFoodClick(food.id) }
+
+                        filteredFoods = filteredFoods.sortedBy {
+                            when (it.status) {
+                                FoodStatus.SERVING -> 1
+                                FoodStatus.PREPARING -> 2
+                                FoodStatus.UNAVAILABLE -> 3
+                            }
+                        }
+
+                        if (filteredFoods.isEmpty()) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(stringResource(R.string.no_foods_available))
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 140.dp),
+                                contentPadding = PaddingValues(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filteredFoods) { food ->
+                                    FoodItemCard(food = food) { onFoodClick(food.id) }
+                                }
                             }
                         }
                     }

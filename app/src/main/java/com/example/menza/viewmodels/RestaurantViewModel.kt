@@ -379,4 +379,12 @@ class RestaurantViewModel(
             String.format("%.1f km", distanceMeters / 1000f)
         }
     }
+
+    fun clearRestaurantData() {
+        _currentRestaurant.value = null
+        _foods.value = emptyList()
+        _staffUsers.value = emptyList()
+        _error.value = null
+        _isLoading.value = false
+    }
 }

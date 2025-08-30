@@ -65,15 +65,18 @@ fun RestaurantListScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     var sortOrder by remember { mutableStateOf(RestaurantSortOrder.AlphabeticalAsc) }
     var searchText by remember { mutableStateOf("") }
+
     LaunchedEffect(userId) {
         if (userId.isNotEmpty()) {
             val result = authRepository.getUserRole(userId)
             isAdmin = result.getOrNull() == Role.ADMIN
         }
     }
+
     LaunchedEffect(Unit) {
         viewModel.loadAllRestaurants()
     }
+
     LaunchedEffect(error) {
         error?.let { errorMsg ->
             Log.d("RestaurantListScreen", "Error: $errorMsg")
@@ -244,6 +247,7 @@ fun RestaurantCard(
             distanceText = viewModel.getDistanceToRestaurant(restaurant, userLocation)
         }
     }
+
     val restaurantBitmap: ImageBitmap? = remember(restaurant.imageUrl) {
         restaurant.imageUrl?.let { base64String ->
             try {

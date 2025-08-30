@@ -9,17 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -27,31 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,15 +34,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.menza.R
 import com.example.menza.viewmodels.AuthViewModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     authViewModel: AuthViewModel = viewModel(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    navController: NavController
 ) {
     val uiState by authViewModel.uiState
     val favorites by authViewModel.favorites.collectAsState()
@@ -83,6 +51,17 @@ fun SettingsScreen(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(Unit) {
+        authViewModel.loadFavorites()
+    }
+
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (!uiState.isLoggedIn) {
+            navController.navigate("login") {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+            }
+        }
+    }
     uiState.errorMessage?.let { errorMessage ->
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(
@@ -136,7 +115,10 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top
             ) {
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.LightGray)) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.LightGray)
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(text = stringResource(R.string.settings_username, uiState.username))
                         Text(text = stringResource(R.string.settings_email, uiState.email))
@@ -172,7 +154,14 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                Button(onClick = { authViewModel.logout() }, shape = RectangleShape, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)) {
+                Button(
+                    onClick = { authViewModel.logout() },
+                    shape = RectangleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                ) {
                     Text(stringResource(R.string.logout))
                 }
 
@@ -188,6 +177,7 @@ fun SettingsScreen(
                 if (uiState.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
                 }
+
                 if (showDeleteAccountDialog) {
                     AlertDialog(
                         onDismissRequest = { showDeleteAccountDialog = false },
@@ -200,12 +190,15 @@ fun SettingsScreen(
                                     showDeleteAccountDialog = false
                                 }
                             ) {
-                                Text(stringResource(R.string.delete_account_confirm), color = MaterialTheme.colorScheme.error)
+                                Text(
+                                    stringResource(R.string.delete_account_confirm),
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { showDeleteAccountDialog = false }) {
-                                Text(stringResource(R.string.cancel))
+                                Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onBackground)
                             }
                         }
                     )
@@ -214,7 +207,6 @@ fun SettingsScreen(
         }
     )
 }
-
 
 @Composable
 fun FavoriteChip(
@@ -375,7 +367,3 @@ fun FavoriteChip(
         }
     }
 }
-
-
-
-

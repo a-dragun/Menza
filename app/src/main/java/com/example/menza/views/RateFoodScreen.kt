@@ -100,6 +100,7 @@ fun RateFoodScreen(
                     .padding(padding)
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
+
                 Text(
                     text = foodName,
                     fontSize = 28.sp,
@@ -168,6 +169,7 @@ fun RateFoodScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+
                 Button(
                     onClick = {
                         if (selectedRating > 0) {

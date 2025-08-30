@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.menza.viewmodels
 
 import android.annotation.SuppressLint
@@ -43,14 +45,12 @@ class LocationViewModel : ViewModel() {
         _userLocation.value = lat to lon
     }
 }
-
 fun isLocationServicesEnabled(context: Context): Boolean {
     val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
             locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
 }
 
-@Suppress("DEPRECATION")
 @SuppressLint("MissingPermission")
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -60,6 +60,7 @@ fun LocationTracker(locationViewModel: LocationViewModel) {
     val permissionState = rememberPermissionState(android.Manifest.permission.ACCESS_FINE_LOCATION)
     var askedToEnableLocation by rememberSaveable { mutableStateOf(false) }
     var showLocationDialog by remember { mutableStateOf(false) }
+
     if (showLocationDialog) {
         AlertDialog(
             onDismissRequest = { showLocationDialog = false },

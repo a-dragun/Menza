@@ -44,6 +44,7 @@ class FoodStatusWorker(
             if (favoriteFoodIds.isEmpty()) {
                 return@withContext Result.success()
             }
+
             favoriteFoodIds.chunked(10).forEach { chunk ->
                 val foodsSnapshot = firestore.collection("foods")
                     .whereIn("id", chunk)

@@ -1,6 +1,5 @@
 package com.example.menza
 
-import com.example.menza.views.AddRestaurantScreen
 import com.example.menza.views.CreateFoodScreen
 import com.example.menza.viewmodels.RestaurantViewModel
 import android.annotation.SuppressLint
@@ -9,7 +8,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -22,7 +20,17 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.menza.ui.theme.MenzaTheme
 import com.example.menza.viewmodels.AuthViewModel
-import com.example.menza.views.*
+import com.example.menza.views.AddRestaurantScreen
+import com.example.menza.views.AdminDashboardScreen
+import com.example.menza.views.FoodDetailScreen
+import com.example.menza.views.FoodSearchScreen
+import com.example.menza.views.LoginScreen
+import com.example.menza.views.RateFoodScreen
+import com.example.menza.views.RegisterScreen
+import com.example.menza.views.RestaurantDetailScreen
+import com.example.menza.views.RestaurantListScreen
+import com.example.menza.views.SettingsScreen
+import com.example.menza.views.SplashScreen
 import com.example.menza.workers.FoodStatusWorker
 import java.util.concurrent.TimeUnit
 
@@ -35,6 +43,7 @@ class MainActivity : ComponentActivity() {
                     .setRequiresBatteryNotLow(true)
                     .build()
             )
+
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
@@ -50,10 +59,6 @@ class MainActivity : ComponentActivity() {
                 val authViewModel: AuthViewModel = viewModel()
                 val restaurantViewModel: RestaurantViewModel = viewModel()
 
-                LaunchedEffect(Unit) {
-                    authViewModel.checkIfLoggedIn()
-                }
-
                 NavHost(
                     navController = navController,
                     startDestination = "splash"
@@ -68,8 +73,9 @@ class MainActivity : ComponentActivity() {
                         RegisterScreen(
                             viewModel = authViewModel,
                             onSuccessfulRegistration = {
+                                authViewModel.resetForm()
                                 navController.navigate("restaurantList") {
-                                    popUpTo("register") { inclusive = true }
+                                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
                                 }
                             },
                             onNavigateToLogin = {
@@ -79,32 +85,32 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-
                     composable("login") {
                         LoginScreen(
                             viewModel = authViewModel,
+                            onSuccessfulLogin = {
+                                navController.navigate("restaurantList") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
                             onNavigateToRegister = {
                                 navController.navigate("register") {
                                     popUpTo("login") { inclusive = true }
                                 }
-                            },
-                            navController = navController
+                            }
                         )
                     }
-
-
                     composable("restaurantList") {
                         RestaurantListScreen(
                             viewModel = restaurantViewModel,
                             onRestaurantClick = { restaurantId ->
                                 navController.navigate("restaurantFood/$restaurantId")
                             },
-                            onAddRestaurantClick = {navController.navigate("addRestaurant")},
-                            onSettingsClick = {navController.navigate("settings")},
-                            onEditRestaurantsClick = {navController.navigate("adminDashboard")}
+                            onAddRestaurantClick = { navController.navigate("addRestaurant") },
+                            onSettingsClick = { navController.navigate("settings") },
+                            onEditRestaurantsClick = { navController.navigate("adminDashboard") }
                         )
                     }
-
                     composable(
                         route = "restaurantFood/{restaurantId}",
                         arguments = listOf(navArgument("restaurantId") { type = NavType.StringType })
@@ -118,12 +124,10 @@ class MainActivity : ComponentActivity() {
                                 onFoodClick = { foodId -> navController.navigate("foodDetail/$foodId") },
                                 onBack = { navController.popBackStack() }
                             )
-
                         } else {
                             Text("Invalid restaurant ID")
                         }
                     }
-
                     composable(
                         route = "createFood/{restaurantId}",
                         arguments = listOf(navArgument("restaurantId") { type = NavType.StringType })
@@ -140,40 +144,31 @@ class MainActivity : ComponentActivity() {
                             Text("Invalid restaurant ID")
                         }
                     }
-
                     composable("adminDashboard") {
                         AdminDashboardScreen(
                             viewModel = restaurantViewModel,
                             onRestaurantClick = { restaurantId ->
                                 navController.navigate("restaurantDetail/$restaurantId")
                             },
-                            onSettingsClick = {navController.navigate("settings")},
-                            onAddRestaurantClick = {navController.navigate("addRestaurant")},
-                            onBack = {
-                                navController.popBackStack()
-                            }
-                        )
-                    }
-
-                    composable("addRestaurant") {
-                        AddRestaurantScreen(
-                            viewModel = restaurantViewModel,
-                            onRestaurantAdded = {
-                                navController.popBackStack()
-                            },
-                            onBack = {
-                                navController.popBackStack()
-                            }
-                        )
-                    }
-
-                    composable("settings") {
-                        SettingsScreen(
-                            authViewModel = authViewModel,
+                            onSettingsClick = { navController.navigate("settings") },
+                            onAddRestaurantClick = { navController.navigate("addRestaurant") },
                             onBack = { navController.popBackStack() }
                         )
                     }
-
+                    composable("addRestaurant") {
+                        AddRestaurantScreen(
+                            viewModel = restaurantViewModel,
+                            onRestaurantAdded = { navController.popBackStack() },
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable("settings") {
+                        SettingsScreen(
+                            authViewModel = authViewModel,
+                            onBack = { navController.popBackStack() },
+                            navController = navController
+                        )
+                    }
                     composable(
                         route = "restaurantDetail/{restaurantId}",
                         arguments = listOf(navArgument("restaurantId") { type = NavType.StringType })
@@ -184,15 +179,12 @@ class MainActivity : ComponentActivity() {
                                 viewModel = restaurantViewModel,
                                 restaurantId = restaurantId,
                                 onBack = { navController.popBackStack() },
-                                onRestaurantDeleted = {
-                                    navController.popBackStack()
-                                }
+                                onRestaurantDeleted = { navController.popBackStack() }
                             )
                         } else {
                             Text("Invalid restaurant ID")
                         }
                     }
-
                     composable(
                         route = "foodDetail/{foodId}",
                         arguments = listOf(navArgument("foodId") { type = NavType.StringType })
@@ -212,7 +204,6 @@ class MainActivity : ComponentActivity() {
                             Text("Invalid food ID")
                         }
                     }
-
                     composable(
                         route = "rateFood/{foodId}/{foodName}",
                         arguments = listOf(
@@ -225,25 +216,20 @@ class MainActivity : ComponentActivity() {
                         val userId = authViewModel.repository.getCurrentUserId()
                         val restaurantName = restaurantViewModel.currentRestaurant.value?.name
                         val restaurantCity = restaurantViewModel.currentRestaurant.value?.city
-                        if (userId != null) {
-                            if (restaurantName != null) {
-                                if (restaurantCity != null) {
-                                    RateFoodScreen(
-                                        foodId = foodId,
-                                        foodName = foodName,
-                                        userId = userId,
-                                        onBack = { navController.popBackStack() },
-                                        onReviewSubmitted = {
-                                            navController.popBackStack()
-                                        },
-                                        restaurantName = restaurantName,
-                                        restaurantCity = restaurantCity
-                                    )
-                                }
-                            }
+                        if (userId != null && restaurantName != null && restaurantCity != null) {
+                            RateFoodScreen(
+                                foodId = foodId,
+                                foodName = foodName,
+                                userId = userId,
+                                onBack = { navController.popBackStack() },
+                                onReviewSubmitted = { navController.popBackStack() },
+                                restaurantName = restaurantName,
+                                restaurantCity = restaurantCity
+                            )
+                        } else {
+                            Text("Missing required data")
                         }
                     }
-
                 }
             }
         }

@@ -150,6 +150,7 @@ class RestaurantRepository(
             if (!restaurant.staffIds.contains(userId)) {
                 return Result.failure(Exception("User is not a staff member of this restaurant"))
             }
+
             val englishName = translateText(food.name, "en")
             val germanName = translateText(food.name, "de")
 
@@ -184,6 +185,7 @@ class RestaurantRepository(
 
     suspend fun getFoodsByRestaurantId(restaurantId: String): Result<List<Food>> {
         return try {
+            println("ID RESTORANA: $restaurantId")
             val snapshot = foodsCollection.whereEqualTo("restaurantId", restaurantId).get().await()
             val foods = snapshot.documents.mapNotNull { doc ->
                 val food = doc.toObject(Food::class.java)?.copy(
@@ -283,6 +285,7 @@ class RestaurantRepository(
         jsonResponse.getJSONObject("responseData").getString("translatedText")
     }
 }
+
 fun Food.toMap(): Map<String, Any?> {
     return mapOf(
         "id" to id,

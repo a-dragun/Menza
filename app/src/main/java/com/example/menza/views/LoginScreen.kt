@@ -28,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.example.menza.R
 import com.example.menza.viewmodels.AuthViewModel
 import kotlinx.coroutines.launch
@@ -36,19 +35,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
-    onNavigateToRegister: () -> Unit,
-    navController: NavController
+    onSuccessfulLogin: () -> Unit,
+    onNavigateToRegister: () -> Unit
 ) {
     val state = viewModel.uiState.value
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(state.isLoggedIn) {
-        if (state.isLoggedIn) {
-            navController.navigate("restaurantList") {
-                popUpTo("login") { inclusive = true }
-            }
-        }
-    }
+
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let { message ->
             scope.launch {
@@ -121,17 +114,26 @@ fun LoginScreen(
                     enabled = !state.isLoading
                 )
 
+
                 if (state.isLoading) {
                     Spacer(Modifier.height(10.dp))
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
+
                 Spacer(Modifier.height(20.dp))
+
                 TextButton(onClick = onNavigateToRegister) {
                     Text(
                         text = stringResource(R.string.dont_have_account),
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
+                }
+                if (state.isLoggedIn && !state.isLoading) {
+                    @Suppress("KotlinConstantConditions")
+                    LaunchedEffect(key1 = state.isLoggedIn) {
+                        onSuccessfulLogin()
+                    }
                 }
             }
         }

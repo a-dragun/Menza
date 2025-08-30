@@ -151,7 +151,6 @@ class AuthRepository(
             if (user.uid != uid) return Result.failure(Exception("UID mismatch"))
             firestore.collection("users").document(uid).delete().await()
             user.delete().await()
-
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

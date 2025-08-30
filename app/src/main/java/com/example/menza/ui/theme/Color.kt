@@ -1,6 +1,7 @@
 package com.example.menza.ui.theme
 
 import androidx.compose.ui.graphics.Color
+
 val LightGreen = Color(0xFFA8D5BA)
 val MediumGreen = Color(0xFF7CB389)
 val DarkGreen = Color(0xFF4B7B5B)

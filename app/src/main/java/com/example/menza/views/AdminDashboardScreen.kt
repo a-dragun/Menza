@@ -80,15 +80,18 @@ fun AdminDashboardScreen(
     var showMenu by remember { mutableStateOf(false) }
     val userId = authRepository.getCurrentUserId() ?: ""
     var isAdmin by remember { mutableStateOf(false) }
+
     LaunchedEffect(userId) {
         if (userId.isNotEmpty()) {
             val result = authRepository.getUserRole(userId)
             isAdmin = result.getOrNull() == Role.ADMIN
         }
     }
+
     LaunchedEffect(Unit) {
         viewModel.loadAllRestaurants()
     }
+
     LaunchedEffect(error) {
         error?.let { errorMsg ->
             snackbarHostState.showSnackbar(errorMsg)
