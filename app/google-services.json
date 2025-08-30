@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "345852450125",
+    "project_id": "menza-fdc31",
+    "storage_bucket": "menza-fdc31.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:345852450125:android:98813ab686ed3894d75304",
+        "android_client_info": {
+          "package_name": "com.example.menza"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAt4EYHGP8fmxwcUdkNwG1_2Z39pPSYSw8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
