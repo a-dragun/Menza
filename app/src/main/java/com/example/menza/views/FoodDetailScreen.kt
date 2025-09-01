@@ -1,3 +1,5 @@
+@file:Suppress("NAME_SHADOWING")
+
 package com.example.menza.views
 
 import com.example.menza.viewmodels.RestaurantViewModel
@@ -41,6 +43,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,7 +93,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 enum class SortOrder {
     NewestFirst,
     OldestFirst
@@ -121,6 +123,7 @@ fun FoodDetailScreen(
     val errorMessage by reviewViewModel.errorMessage.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(foodId) {
         reviewViewModel.loadReviews(foodId)
@@ -141,6 +144,7 @@ fun FoodDetailScreen(
                 currentUser = result.getOrNull()
             }
         }
+        loading = false
     }
 
     val isRestaurantStaff = currentUser?.let { user ->
@@ -151,567 +155,582 @@ fun FoodDetailScreen(
     var showFavoriteDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(food?.displayName() ?: stringResource(R.string.food_details_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    if (uiState.isLoggedIn && !isRestaurantStaff) {
-                        IconButton(onClick = { showFavoriteDialog = true }) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = stringResource(
-                                    if (isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites
-                                ),
-                                tint = if (isFavorite) Orange else colorScheme.tertiary
-                            )
-                        }
-                    }
-                }
+    if (loading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = colorScheme.primary,
+                strokeWidth = 4.dp
             )
-        },
-        bottomBar = {
-            BottomAppBar(
-                containerColor = colorScheme.background
-            ) {
-                if (isRestaurantStaff && uiState.isLoggedIn) {
-                    Button(
-                        onClick = { showStatusDialog = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(end = 4.dp)
-                    ) {
-                        Text(stringResource(R.string.change_status_button))
-                    }
-                    Button(
-                        onClick = { showDeleteDialog = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(start = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colorScheme.error)
-                    ) {
-                        Text(stringResource(R.string.delete_food_button))
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            if (food != null) {
-                                onRateFoodClick(food.id, food.displayName())
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.rate_food_button))
-                    }
-                }
-            }
         }
-    ) { padding ->
-        if (food == null) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(colorScheme.background),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(R.string.food_not_found))
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .offset(y = (-10).dp)
-            ) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    food.photoUrl?.let { base64String ->
-                        val bytes = Base64.decode(base64String, Base64.DEFAULT)
-                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        bitmap?.let {
-                            Image(
-                                bitmap = it.asImageBitmap(),
-                                contentDescription = stringResource(R.string.food_name_label),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(300.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
-                            )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(food?.displayName() ?: stringResource(R.string.food_details_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                         }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(16.dp)
-                            .background(colorScheme.surface.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
-                            .padding(8.dp)
-                    ) {
-                        Column(horizontalAlignment = Alignment.Start) {
-                            Text(
-                                text = food.displayName(),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.onSurface
-                            )
-                            Text(
-                                text = "${viewModel.currentRestaurant.value?.name ?: ""}, ${viewModel.currentRestaurant.value?.city ?: ""}",
-                                fontSize = 14.sp,
-                                color = colorScheme.onSurface
-                            )
-                            Text(
-                                text = stringResource(R.string.price_label, food.regularPrice.toString(), food.studentPrice.toString()),
-                                fontSize = 14.sp,
-                                color = colorScheme.onSurface
-                            )
-                            var allergenList = food.allergens.joinToString(", ") { it.getDisplayName(context) }
-                            if (allergenList.isEmpty()) {
-                                allergenList = stringResource(R.string.no_allergen)
+                    },
+                    actions = {
+                        if (uiState.isLoggedIn && !isRestaurantStaff) {
+                            IconButton(onClick = { showFavoriteDialog = true }) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = stringResource(
+                                        if (isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites
+                                    ),
+                                    tint = if (isFavorite) Orange else colorScheme.tertiary
+                                )
                             }
-                            Text(
-                                text = "${stringResource(R.string.allergens_label)}: $allergenList",
-                                fontSize = 14.sp,
-                                color = colorScheme.onSurface
-                            )
                         }
                     }
-                    val averageRating = if (reviews.isNotEmpty()) reviews.map { it.rating }.average() else 0.0
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(16.dp)
-                            .background(colorScheme.surface.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = String.format("%.1f", averageRating),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.onPrimary
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Orange,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp)
+                )
+            },
+            bottomBar = {
+                BottomAppBar(
+                    containerColor = colorScheme.background
                 ) {
-                    val statusText = stringResource(R.string.status_label)
-                    val statusDisplay = food.status.getDisplayName(context)
-                    val statusColor = when (food.status) {
-                        FoodStatus.UNAVAILABLE -> colorScheme.error
-                        FoodStatus.PREPARING -> colorScheme.primary
-                        FoodStatus.SERVING -> colorScheme.secondary
-                    }
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(style = SpanStyle(color = colorScheme.onPrimary, fontSize = 20.sp)) {
-                                append("$statusText ")
-                            }
-                            withStyle(style = SpanStyle(color = statusColor, fontSize = 20.sp)) {
-                                append(statusDisplay)
-                            }
-                        },
-                        modifier = Modifier
-                            .padding(vertical = 8.dp)
-                            .fillMaxWidth()
-                            .wrapContentWidth(Alignment.CenterHorizontally)
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    Box {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    if (isRestaurantStaff && uiState.isLoggedIn) {
+                        Button(
+                            onClick = { showStatusDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(end = 4.dp)
                         ) {
-                            val ratingCount = reviews.size
-                            Text(
-                                text = stringResource(R.string.comments_label, ratingCount),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                            Box {
-                                IconButton(onClick = { showSortMenu = !showSortMenu }) {
-                                    Icon(
-                                        Icons.Default.Menu,
-                                        contentDescription = stringResource(R.string.sort_reviews),
-                                        tint = colorScheme.onBackground
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = showSortMenu,
-                                    onDismissRequest = { showSortMenu = false },
-                                    modifier = Modifier
-                                        .background(colorScheme.background)
-                                        .align(Alignment.TopEnd)
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.newest_first), color = colorScheme.onBackground) },
-                                        onClick = {
-                                            sortOrder = SortOrder.NewestFirst
-                                            showSortMenu = false
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.oldest_first), color = colorScheme.onBackground) },
-                                        onClick = {
-                                            sortOrder = SortOrder.OldestFirst
-                                            showSortMenu = false
-                                        }
-                                    )
-                                }
-                            }
+                            Text(stringResource(R.string.change_status_button))
                         }
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        TextButton(
-                            onClick = { ratingFilter = if (ratingFilter == RatingFilter.Critical) RatingFilter.None else RatingFilter.Critical },
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = if (ratingFilter == RatingFilter.Critical) colorScheme.error else colorScheme.onBackground
-                            )
+                        Button(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(start = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = colorScheme.error)
                         ) {
-                            Text(stringResource(R.string.critical_ratings))
+                            Text(stringResource(R.string.delete_food_button))
                         }
-                        TextButton(
-                            onClick = { ratingFilter = if (ratingFilter == RatingFilter.Excellent) RatingFilter.None else RatingFilter.Excellent },
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = if (ratingFilter == RatingFilter.Excellent) colorScheme.primary else colorScheme.onBackground
-                            )
-                        ) {
-                            Text(stringResource(R.string.excellent_ratings))
-                        }
-                    }
-                    if (errorMessage != null) {
-                        Text(stringResource(R.string.error_prefix, errorMessage!!), color = colorScheme.error)
-                    } else if (reviews.isEmpty()) {
-                        Text(stringResource(R.string.no_comments))
                     } else {
-                        val sortedAndFilteredReviews = when (sortOrder) {
-                            SortOrder.NewestFirst -> reviews.sortedByDescending { it.timestamp }
-                            SortOrder.OldestFirst -> reviews.sortedBy { it.timestamp }
-                        }.filter { review ->
-                            when (ratingFilter) {
-                                RatingFilter.None -> true
-                                RatingFilter.Critical -> review.rating <= 2
-                                RatingFilter.Excellent -> review.rating >= 4
-                            }
-                        }
-                        if (sortedAndFilteredReviews.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.no_comments),
-                                color = colorScheme.onBackground
-                            )
-                        } else {
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(sortedAndFilteredReviews) { review ->
-                                    val loading = stringResource(R.string.loading)
-                                    val username = remember { mutableStateOf(loading) }
-                                    var showRemoveDialog by remember { mutableStateOf(false) }
-                                    var startFillAnimation by remember { mutableStateOf(false) }
-                                    val fillProgress = remember { Animatable(0f) }
-                                    LaunchedEffect(startFillAnimation) {
-                                        if (startFillAnimation) {
-                                            fillProgress.snapTo(0f)
-                                            fillProgress.animateTo(
-                                                targetValue = 1f,
-                                                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
-                                            )
-                                            startFillAnimation = false
-                                        }
-                                    }
-                                    LaunchedEffect(showRemoveDialog) {
-                                        if (!showRemoveDialog) {
-                                            fillProgress.snapTo(0f)
-                                        }
-                                    }
-                                    val unknownUser = stringResource(R.string.unknown_user)
-                                    val error = stringResource(R.string.error)
-                                    LaunchedEffect(review.userId) {
-                                        try {
-                                            val userResult = authViewModel.repository.getUserById(review.userId)
-                                            if (userResult.isSuccess) {
-                                                val user = userResult.getOrNull()
-                                                if (user != null) {
-                                                    username.value = user.username
-                                                } else {
-                                                    username.value = unknownUser
-                                                    Log.d("tag", username.value)
-                                                }
-                                            } else {
-                                                username.value = error
-                                            }
-                                        } catch (e: Exception) {
-                                            username.value = error
-                                        }
-                                    }
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(8.dp),
-                                        border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.3f)),
-                                        colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(IntrinsicSize.Min)
-                                        ) {
-                                            val color = colorScheme.background
-                                            Canvas(modifier = Modifier.matchParentSize()) {
-                                                if (fillProgress.value > 0f) {
-                                                    val radius = size.maxDimension * fillProgress.value
-                                                    drawCircle(
-                                                        color = color,
-                                                        radius = radius,
-                                                        center = Offset(x = size.width - 50.dp.toPx(), y = 50.dp.toPx())
-                                                    )
-                                                }
-                                            }
-                                            if (showRemoveDialog) {
-                                                Column(
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .padding(16.dp),
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.Center
-                                                ) {
-                                                    Text(
-                                                        text = stringResource(R.string.delete_review_confirmation),
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color = colorScheme.onBackground,
-                                                        textAlign = TextAlign.Center
-                                                    )
-                                                    Spacer(Modifier.height(8.dp))
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.SpaceEvenly
-                                                    ) {
-                                                        TextButton(onClick = { showRemoveDialog = false }) {
-                                                            Text(stringResource(R.string.cancel), color = colorScheme.onBackground)
-                                                        }
-                                                        TextButton(
-                                                            onClick = {
-                                                                coroutineScope.launch {
-                                                                    reviewViewModel.deleteReview(foodId = foodId, reviewId = review.id)
-                                                                    showRemoveDialog = false
-                                                                }
-                                                            }
-                                                        ) {
-                                                            Text(stringResource(R.string.delete_review), color = colorScheme.error)
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                Column(modifier = Modifier.padding(12.dp)) {
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        repeat(review.rating) {
-                                                            Icon(
-                                                                Icons.Default.Star,
-                                                                contentDescription = null,
-                                                                tint = Orange,
-                                                                modifier = Modifier.size(18.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                    review.comment?.let {
-                                                        Spacer(Modifier.height(4.dp))
-                                                        Text(it, fontSize = 14.sp)
-                                                    }
-                                                    Spacer(Modifier.height(4.dp))
-                                                    Text(
-                                                        text = username.value,
-                                                        fontSize = 12.sp,
-                                                        color = Color.Gray
-                                                    )
-                                                }
-                                                Text(
-                                                    text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(
-                                                        Date(review.timestamp)
-                                                    ),
-                                                    fontSize = 12.sp,
-                                                    color = Color.Gray,
-                                                    modifier = Modifier
-                                                        .align(Alignment.BottomEnd)
-                                                        .padding(12.dp)
-                                                )
-                                                if (review.userId == currentUser?.uid) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            showRemoveDialog = true
-                                                            startFillAnimation = true
-                                                        },
-                                                        modifier = Modifier
-                                                            .align(Alignment.TopEnd)
-                                                            .padding(4.dp)
-                                                            .size(20.dp)
-                                                            .background(Color.White, CircleShape)
-                                                            .border(1.dp, Color.Black, CircleShape)
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Close,
-                                                            contentDescription = stringResource(R.string.delete_review_content_description),
-                                                            tint = Color.Black
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(24.dp))
-                }
-            }
-        }
-        if (showStatusDialog) {
-            Dialog(
-                onDismissRequest = { showStatusDialog = false }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .background(colorScheme.background, RoundedCornerShape(16.dp))
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.select_status_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colorScheme.onBackground
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.status_update_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    HorizontalDivider()
-                    Spacer(Modifier.height(16.dp))
-                    FoodStatus.entries.forEach { status ->
-                        TextButton(
+                        Button(
                             onClick = {
-                                selectedStatus = status
-                                viewModel.updateFoodStatus(foodId, status)
-                                showStatusDialog = false
+                                if (food != null) {
+                                    onRateFoodClick(food.id, food.displayName())
+                                }
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(status.displayName(), color = colorScheme.onBackground)
+                            Text(stringResource(R.string.rate_food_button))
                         }
-                        HorizontalDivider()
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(
-                        onClick = { showStatusDialog = false },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text(stringResource(R.string.cancel))
                     }
                 }
             }
-        }
-        if (showFavoriteDialog) {
-            Dialog(
-                onDismissRequest = { showFavoriteDialog = false }
-            ) {
+        ) { padding ->
+            if (food == null) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(colorScheme.background),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(stringResource(R.string.food_not_found))
+                }
+            } else {
                 Column(
                     modifier = Modifier
-                        .background(colorScheme.background, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .fillMaxSize()
+                        .padding(padding)
+                        .offset(y = (-10).dp)
                 ) {
-                    Text(
-                        stringResource(if (isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colorScheme.onBackground
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        TextButton(
-                            onClick = { showFavoriteDialog = false }
-                        ) {
-                            Text(text = stringResource(R.string.cancel), color = colorScheme.error)
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        food.photoUrl?.let { base64String ->
+                            val bytes = Base64.decode(base64String, Base64.DEFAULT)
+                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            bitmap?.let {
+                                Image(
+                                    bitmap = it.asImageBitmap(),
+                                    contentDescription = stringResource(R.string.food_name_label),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(300.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
                         }
-                        TextButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    if (currentUser != null) {
-                                        val newFavorites = if (isFavorite) {
-                                            currentUser!!.favorites - foodId
-                                        } else {
-                                            currentUser!!.favorites + foodId
-                                        }
-                                        authViewModel.repository.updateFavorites(currentUser!!.uid, newFavorites)
-                                        currentUser = currentUser!!.copy(favorites = newFavorites)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(16.dp)
+                                .background(colorScheme.surface.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.Start) {
+                                Text(
+                                    text = food.displayName(),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${viewModel.currentRestaurant.value?.name ?: ""}, ${viewModel.currentRestaurant.value?.city ?: ""}",
+                                    fontSize = 14.sp,
+                                    color = colorScheme.onSurface
+                                )
+                                Text(
+                                    text = stringResource(R.string.price_label, food.regularPrice.toString(), food.studentPrice.toString()),
+                                    fontSize = 14.sp,
+                                    color = colorScheme.onSurface
+                                )
+                                var allergenList = food.allergens.joinToString(", ") { it.getDisplayName(context) }
+                                if (allergenList.isEmpty()) {
+                                    allergenList = stringResource(R.string.no_allergen)
+                                }
+                                Text(
+                                    text = "${stringResource(R.string.allergens_label)}: $allergenList",
+                                    fontSize = 14.sp,
+                                    color = colorScheme.onSurface
+                                )
+                            }
+                        }
+                        val averageRating = if (reviews.isNotEmpty()) reviews.map { it.rating }.average() else 0.0
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(16.dp)
+                                .background(colorScheme.surface.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = String.format("%.1f", averageRating),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onPrimary
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Orange,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                    ) {
+                        val statusText = stringResource(R.string.status_label)
+                        val statusDisplay = food.status.getDisplayName(context)
+                        val statusColor = when (food.status) {
+                            FoodStatus.UNAVAILABLE -> colorScheme.error
+                            FoodStatus.PREPARING -> colorScheme.primary
+                            FoodStatus.SERVING -> colorScheme.secondary
+                        }
+                        Text(
+                            text = buildAnnotatedString {
+                                withStyle(style = SpanStyle(color = colorScheme.onPrimary, fontSize = 20.sp)) {
+                                    append("$statusText ")
+                                }
+                                withStyle(style = SpanStyle(color = statusColor, fontSize = 20.sp)) {
+                                    append(statusDisplay)
+                                }
+                            },
+                            modifier = Modifier
+                                .padding(vertical = 8.dp)
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        Box {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val ratingCount = reviews.size
+                                Text(
+                                    text = stringResource(R.string.comments_label, ratingCount),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                                Box {
+                                    IconButton(onClick = { showSortMenu = !showSortMenu }) {
+                                        Icon(
+                                            Icons.Default.Menu,
+                                            contentDescription = stringResource(R.string.sort_reviews),
+                                            tint = colorScheme.onBackground
+                                        )
                                     }
-                                    showFavoriteDialog = false
+                                    DropdownMenu(
+                                        expanded = showSortMenu,
+                                        onDismissRequest = { showSortMenu = false },
+                                        modifier = Modifier
+                                            .background(colorScheme.background)
+                                            .align(Alignment.TopEnd)
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.newest_first), color = colorScheme.onBackground) },
+                                            onClick = {
+                                                sortOrder = SortOrder.NewestFirst
+                                                showSortMenu = false
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.oldest_first), color = colorScheme.onBackground) },
+                                            onClick = {
+                                                sortOrder = SortOrder.OldestFirst
+                                                showSortMenu = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Text(stringResource(R.string.confirm))
+                            TextButton(
+                                onClick = { ratingFilter = if (ratingFilter == RatingFilter.Critical) RatingFilter.None else RatingFilter.Critical },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = if (ratingFilter == RatingFilter.Critical) colorScheme.error else colorScheme.onBackground
+                                )
+                            ) {
+                                Text(stringResource(R.string.critical_ratings))
+                            }
+                            TextButton(
+                                onClick = { ratingFilter = if (ratingFilter == RatingFilter.Excellent) RatingFilter.None else RatingFilter.Excellent },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = if (ratingFilter == RatingFilter.Excellent) colorScheme.primary else colorScheme.onBackground
+                                )
+                            ) {
+                                Text(stringResource(R.string.excellent_ratings))
+                            }
+                        }
+                        if (errorMessage != null) {
+                            Text(stringResource(R.string.error_prefix, errorMessage!!), color = colorScheme.error)
+                        } else if (reviews.isEmpty()) {
+                            Text(stringResource(R.string.no_comments))
+                        } else {
+                            val sortedAndFilteredReviews = when (sortOrder) {
+                                SortOrder.NewestFirst -> reviews.sortedByDescending { it.timestamp }
+                                SortOrder.OldestFirst -> reviews.sortedBy { it.timestamp }
+                            }.filter { review ->
+                                when (ratingFilter) {
+                                    RatingFilter.None -> true
+                                    RatingFilter.Critical -> review.rating <= 2
+                                    RatingFilter.Excellent -> review.rating >= 4
+                                }
+                            }
+                            if (sortedAndFilteredReviews.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.no_comments),
+                                    color = colorScheme.onBackground
+                                )
+                            } else {
+                                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(sortedAndFilteredReviews) { review ->
+                                        val loading = stringResource(R.string.loading)
+                                        val username = remember { mutableStateOf(loading) }
+                                        var showRemoveDialog by remember { mutableStateOf(false) }
+                                        var startFillAnimation by remember { mutableStateOf(false) }
+                                        val fillProgress = remember { Animatable(0f) }
+                                        LaunchedEffect(startFillAnimation) {
+                                            if (startFillAnimation) {
+                                                fillProgress.snapTo(0f)
+                                                fillProgress.animateTo(
+                                                    targetValue = 1f,
+                                                    animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
+                                                )
+                                                startFillAnimation = false
+                                            }
+                                        }
+                                        LaunchedEffect(showRemoveDialog) {
+                                            if (!showRemoveDialog) {
+                                                fillProgress.snapTo(0f)
+                                            }
+                                        }
+                                        val unknownUser = stringResource(R.string.unknown_user)
+                                        val error = stringResource(R.string.error)
+                                        LaunchedEffect(review.userId) {
+                                            try {
+                                                val userResult = authViewModel.repository.getUserById(review.userId)
+                                                if (userResult.isSuccess) {
+                                                    val user = userResult.getOrNull()
+                                                    if (user != null) {
+                                                        username.value = user.username
+                                                    } else {
+                                                        username.value = unknownUser
+                                                        Log.d("tag", username.value)
+                                                    }
+                                                } else {
+                                                    username.value = error
+                                                }
+                                            } catch (e: Exception) {
+                                                username.value = error
+                                            }
+                                        }
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.3f)),
+                                            colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(IntrinsicSize.Min)
+                                            ) {
+                                                val color = colorScheme.background
+                                                Canvas(modifier = Modifier.matchParentSize()) {
+                                                    if (fillProgress.value > 0f) {
+                                                        val radius = size.maxDimension * fillProgress.value
+                                                        drawCircle(
+                                                            color = color,
+                                                            radius = radius,
+                                                            center = Offset(x = size.width - 50.dp.toPx(), y = 50.dp.toPx())
+                                                        )
+                                                    }
+                                                }
+                                                if (showRemoveDialog) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .padding(16.dp),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.Center
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(R.string.delete_review_confirmation),
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = colorScheme.onBackground,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                        Spacer(Modifier.height(8.dp))
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceEvenly
+                                                        ) {
+                                                            TextButton(onClick = { showRemoveDialog = false }) {
+                                                                Text(stringResource(R.string.cancel), color = colorScheme.onBackground)
+                                                            }
+                                                            TextButton(
+                                                                onClick = {
+                                                                    coroutineScope.launch {
+                                                                        reviewViewModel.deleteReview(foodId = foodId, reviewId = review.id)
+                                                                        showRemoveDialog = false
+                                                                    }
+                                                                }
+                                                            ) {
+                                                                Text(stringResource(R.string.delete_review), color = colorScheme.error)
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    Column(modifier = Modifier.padding(12.dp)) {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            repeat(review.rating) {
+                                                                Icon(
+                                                                    Icons.Default.Star,
+                                                                    contentDescription = null,
+                                                                    tint = Orange,
+                                                                    modifier = Modifier.size(18.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                        review.comment?.let {
+                                                            Spacer(Modifier.height(4.dp))
+                                                            Text(it, fontSize = 14.sp)
+                                                        }
+                                                        Spacer(Modifier.height(4.dp))
+                                                        Text(
+                                                            text = username.value,
+                                                            fontSize = 12.sp,
+                                                            color = Color.Gray
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(
+                                                            Date(review.timestamp)
+                                                        ),
+                                                        fontSize = 12.sp,
+                                                        color = Color.Gray,
+                                                        modifier = Modifier
+                                                            .align(Alignment.BottomEnd)
+                                                            .padding(12.dp)
+                                                    )
+                                                    if (review.userId == currentUser?.uid) {
+                                                        IconButton(
+                                                            onClick = {
+                                                                showRemoveDialog = true
+                                                                startFillAnimation = true
+                                                            },
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopEnd)
+                                                                .padding(4.dp)
+                                                                .size(20.dp)
+                                                                .background(Color.White, CircleShape)
+                                                                .border(1.dp, Color.Black, CircleShape)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Close,
+                                                                contentDescription = stringResource(R.string.delete_review_content_description),
+                                                                tint = Color.Black
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(24.dp))
+                    }
+                }
+            }
+            if (showStatusDialog) {
+                Dialog(
+                    onDismissRequest = { showStatusDialog = false }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(colorScheme.background, RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.select_status_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colorScheme.onBackground
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.status_update_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(16.dp))
+                        FoodStatus.entries.forEach { status ->
+                            TextButton(
+                                onClick = {
+                                    selectedStatus = status
+                                    viewModel.updateFoodStatus(foodId, status)
+                                    showStatusDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(status.displayName(), color = colorScheme.onBackground)
+                            }
+                            HorizontalDivider()
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(
+                            onClick = { showStatusDialog = false },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 }
             }
-        }
-        if (showDeleteDialog) {
-            Dialog(
-                onDismissRequest = { showDeleteDialog = false }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .background(colorScheme.background, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            if (showFavoriteDialog) {
+                Dialog(
+                    onDismissRequest = { showFavoriteDialog = false }
                 ) {
-                    Text(
-                        stringResource(R.string.delete_food_confirmation),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colorScheme.onBackground
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                    Column(
+                        modifier = Modifier
+                            .background(colorScheme.background, RoundedCornerShape(16.dp))
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        TextButton(
-                            onClick = { showDeleteDialog = false }
+                        Text(
+                            stringResource(if (isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colorScheme.onBackground
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Text(text = stringResource(R.string.cancel), color = colorScheme.onPrimary)
-                        }
-                        TextButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.deleteFood(foodId)
-                                    showDeleteDialog = false
-                                    onBack()
-                                }
+                            TextButton(
+                                onClick = { showFavoriteDialog = false }
+                            ) {
+                                Text(text = stringResource(R.string.cancel), color = colorScheme.error)
                             }
+                            TextButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        if (currentUser != null) {
+                                            val newFavorites = if (isFavorite) {
+                                                currentUser!!.favorites - foodId
+                                            } else {
+                                                currentUser!!.favorites + foodId
+                                            }
+                                            authViewModel.repository.updateFavorites(currentUser!!.uid, newFavorites)
+                                            currentUser = currentUser!!.copy(favorites = newFavorites)
+                                        }
+                                        showFavoriteDialog = false
+                                    }
+                                }
+                            ) {
+                                Text(stringResource(R.string.confirm))
+                            }
+                        }
+                    }
+                }
+            }
+            if (showDeleteDialog) {
+                Dialog(
+                    onDismissRequest = { showDeleteDialog = false }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(colorScheme.background, RoundedCornerShape(16.dp))
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            stringResource(R.string.delete_food_confirmation),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colorScheme.onBackground
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Text(text = stringResource(R.string.confirm), color = colorScheme.error)
+                            TextButton(
+                                onClick = { showDeleteDialog = false }
+                            ) {
+                                Text(text = stringResource(R.string.cancel), color = colorScheme.onPrimary)
+                            }
+                            TextButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.deleteFood(foodId)
+                                        showDeleteDialog = false
+                                        onBack()
+                                    }
+                                }
+                            ) {
+                                Text(text = stringResource(R.string.confirm), color = colorScheme.error)
+                            }
                         }
                     }
                 }

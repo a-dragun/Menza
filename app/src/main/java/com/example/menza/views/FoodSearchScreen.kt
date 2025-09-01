@@ -1,3 +1,5 @@
+@file:Suppress("KotlinConstantConditions")
+
 package com.example.menza.views
 
 import com.example.menza.viewmodels.RestaurantViewModel
@@ -98,46 +100,46 @@ fun FoodSearchScreen(
         selectedStatusFilters = setOf()
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text(restaurant?.name ?: stringResource(R.string.restaurant_not_found)) },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        viewModel.clearRestaurantData()
-                        onBack()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+    if (isLoading || restaurant?.id != restaurantId) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 4.dp
+            )
+        }
+    } else {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                TopAppBar(
+                    title = { Text(restaurant?.name ?: stringResource(R.string.restaurant_not_found)) },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            viewModel.clearRestaurantData()
+                            onBack()
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                if (restaurant?.staffIds?.contains(userId) == true && restaurant?.id == restaurantId) {
+                    FloatingActionButton(
+                        onClick = { onAddFoodClick(restaurantId) },
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_food))
                     }
                 }
-            )
-        },
-        floatingActionButton = {
-            if (restaurant?.staffIds?.contains(userId) == true && restaurant?.id == restaurantId) {
-                FloatingActionButton(
-                    onClick = { onAddFoodClick(restaurantId) },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_food))
-                }
             }
-        }
-    ) { padding ->
-        if (isLoading || restaurant?.id != restaurantId) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 4.dp
-                )
-            }
-        } else {
+        ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()

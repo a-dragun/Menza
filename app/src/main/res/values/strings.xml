@@ -39,7 +39,7 @@
     <string name="price_label">Regularna cijena: %1$s€ | Studentska cijena: %2$s€</string>
     <string name="status_label">Status:</string>
     <string name="allergens_display">Alergeni: %1$s</string>
-    <string name="comments_label">Komentari (%1$d)</string>
+    <string name="comments_label">Ocjene (%1$d)</string>
     <string name="no_comments">Nema komentara...</string>
     <string name="user_label">Korisnik: %1$s</string>
     <string name="username">Korisničko ime</string>
@@ -89,7 +89,7 @@
     <string name="tag_steamed">Kuhano na pari</string>
     <string name="tag_dairy">Mliječni proizvodi</string>
     <string name="tag_nut_free">Bez orašastih plodova</string>
-    <string name="tag_low_sugar">Nisko šećerno</string>
+    <string name="tag_low_sugar">Niskošećerno</string>
     <string name="status_preparing">Priprema se</string>
     <string name="status_unavailable">Nedostupno</string>
     <string name="status_serving">Poslužuje se</string>

@@ -39,7 +39,7 @@
     <string name="price_label">Regulärer Preis: %1$s€ | Student Preis: %2$s€</string>
     <string name="status_label">Status:</string>
     <string name="allergens_display">Allergene: %1$s</string>
-    <string name="comments_label">Kommentare (%1$d)</string>
+    <string name="comments_label">Bewertung (%1$d)</string>
     <string name="no_comments">Keine Kommentare...</string>
     <string name="user_label">Benutzer: %1$s...</string>
     <string name="change_status_button">Status ändern</string>
@@ -103,7 +103,7 @@
     <string name="student_price">Studentenpreis</string>
     <string name="submit">Absenden</string>
     <string name="rate_food">Bewerten</string>
-    <string name="dont_have_account">Noch keinen Account? Registrieren!</string>
+    <string name="dont_have_account">Noch keinen Konto? Registrieren!</string>
     <string name="other">Andere</string>
     <string name="register">Registrieren</string>
     <string name="repeat_password">Passwort wiederholen</string>

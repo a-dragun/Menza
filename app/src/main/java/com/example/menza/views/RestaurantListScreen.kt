@@ -317,13 +317,8 @@ fun RestaurantCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Column {
                         Text(
-                            text = restaurant.city,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = restaurant.address,
-                            fontSize = 14.sp,
+                            text = "${restaurant.city}, ${restaurant.address}",
+                            fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -347,13 +342,13 @@ fun RestaurantCard(
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = stringResource(R.string.loading_distance),
-                                fontSize = 14.sp,
+                                fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
                             Text(
                                 text = stringResource(R.string.distance, distanceText!!),
-                                fontSize = 14.sp,
+                                fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

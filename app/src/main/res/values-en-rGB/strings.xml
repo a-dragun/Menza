@@ -39,7 +39,7 @@
     <string name="price_label">Regular price: %1$s€ | Student price: %2$s€</string>
     <string name="status_label">Status:</string>
     <string name="allergens_display">Allergens: %1$s</string>
-    <string name="comments_label">Comments (%1$d)</string>
+    <string name="comments_label">Ratings (%1$d)</string>
     <string name="no_comments">No comments...</string>
     <string name="user_label">User: %1$s...</string>
     <string name="change_status_button">Change Status</string>
